@@ -1,0 +1,244 @@
+Sample 1: Logical Operations. Check the examples done in class during the lecture.
+
+• How you isolate a specific field
+creat new register,shift right first, then shift left to isolate the spcific field.
+ex: B3 B2 B1 B0  Isolate B1
+sll $t1,$t0,16     #move B1 to the left most slot
+srl $t1,$t1,24     #then move all 3bytes*8=24
+
+
+• How you set fields to 0(AND)
+andi $t1,$t0,ox00FF  #First 16 digits always be 0,"zero extend"
+
+li $t2,ox0000 0000  #all bits become 0
+and $t1,$t0,$t2
+
+(OR)
+X OR 1=1
+X OR 0=X
+
+
+
+• How you mask fields
+Mask the last 8 bits of register $t0
+andi $t1,$t0,ox00FF  #first 16 digits always be 0,ox for 16 bits we could change the last 16 digits
+
+Mask the first 8 bits of register $t0
+li $t2,oxFF00 0000  #logical operation use "zero-extend "from 16byte to 32 byte
+
+
+• How you complement fields(XOR,exclusive or, only one input is true)
+x xor 0=x
+x xor 1=x' 
+
+ex:complet byte 3 ,(B3 B2 B1 B0)
+li $t2,oxFF00 0000
+XOR $t1,$t0,$t2
+
+
+Sample 2:
+Given a high-level code you should be able to write the corresponding MIPS assembly code.
+Simple loop in C; A[ ] is an array of ints
+do
+{
+g = g + A[i];
+i = i + j;
+while (i != h) }
+Rewrite this as: Loop:
+g = g + A[i];
+i = i + j;
+if (i != h) goto Loop;
+Using the mapping: g: $s1, h: $s2, i: $s3, j: $s4, base of A: $s5; write the corresponding
+assembly instructions. 
+
+
+.text:
+main:
+##s1 <--- g ,s2<--- h,s3<---i,s4 <---j,s5<--- A
+##$t0 for address of A[i]
+##$t1 for the value of A[i]
+
+##address of A[i]=base address + 4 * i
+
+do:sll $t0,$s3,2  #4*i
+   add $t0,$t0,$s5  #base of A:$s5+4*i
+   lw $t1,(0)$t0    #load the value of A[i] into $t1
+   add $s1,$s1,$t1  #g=g+A[i]
+   add $s3,$s3,$s4  #i=i+j
+   bne $s3,$s2,do #if(i!=h), do
+   
+
+Rewrite as Loop:
+Loop: sll $t0,$s3,2  #4*i
+      add $t0,$t0,$s5  #base of A:$s5+4*i
+      lw $t1,(0)$t0    #load the value of A[i] into $t1
+      add $s1,$s1,$t1  #g=g+A[i]
+      add $s3,$s3,$s4  #i=i+j
+      bne $s3,$s2,Loop
+
+Sample 3
+Considering the following MIPS code:
+begin:
+addi $t0, $zero, 22    #t0=22
+move $t1, $zero        #t1=0
+li $a0, 0              #a0=0
+loop:       
+beq $t0, $t1, finish   #if(t0==t1),finish
+add $t1, $t1, $a0      #t1=t1+a0
+addi $t0, $t0, -4      #t0=t0-4
+addi $a0, $a0, 1       #a0=a0+1
+j loop                 #go back loop
+finish:                #exit program
+
+a. Explain the meaning of each instruction by inserting (inline) comments
+
+b. Give a possible high-level pseudo-code for the above MIPS code.
+
+int t0=22,t1=0,a0=0;
+if(t0!=t1){
+ t1=t1+a0;
+ t0=t0-4;
+ a0=a0+1;
+}
+
+c. What is the value of $t0 when the program reaches “finish”?
+1)to!=a0?,yes,t1=0,t0=18,a0=1
+2)t0!=a0?yes,t1=1,t0=14,a0=2
+3)t0!=a0?yes,t1=3,t0=10,a0=3
+4)t0!=a0?yes,t1=6,t0=6,a0=4
+5)t0!=a0?yes,t1=10,t0=10,a0=5
+5)t0!=a0?No,finish
+ $t0=10
+
+d. What is the value of $a0 when the program reaches “finish”?
+$a0=5 
+
+Sample 4:
+Suppose that register $t0 contains 0x00001000. What is the value of $t2 after:
+slt $t2, $t0, $t0       #set less than ,t0<t0?,no,$t2=0
+bne $t2, $zero, ELSE    #0!=0? no
+j DONE
+ELSE: addi $t2, $t2, 2
+DONE: 
+
+$t2=0
+
+Sample 5:??????
+add $t0, $zero, $zero   #$t0=0
+addi $a0, $zero, 21     #$a0=21, 10101
+loop: beq $a0, $zero, end 
+add $t0, $t0, $a0   #$t0=$t0+$a0
+addi $a0, $a0, -3   #$a0=$a0-3       
+j loop
+end:
+
+For beq $a0, $zero, end give the binary value of the offset field. 
+Briefly explain. 
+
+bne:(R-format)
+op-code Rs Rt Imm
+6       5  5  16
+op-code:000101
+Rs:$a0=21=10101
+Rt:$zero,00000
+end:3 lines, 0000 0000 0000 0011
+(offset value, count from next instruction to the label by line)
+
+offset field is :0000 0000 0000 0011
+
+
+Sample 6:
+Given the assembly instruction: bne $s0, $s1, DONE
+The address of the instruction is 500bytes. If the offset field contains the
+ following value:
+1111111111110100(2), what is the target address? Explain your answer. 
+
+Target address=[PC+4] +offset(bytes)
+address of the next instruction=500+4=504
+offset value:1111 1111 1111 0100--->(keep right most 1 and 0's unchanged,
+then flip everything)0000 0000 0000 1100--> -12
+Target address=504-36=465
+
+
+Sample 7:
+Write a MIPS program (runnable) that will do the following:
+Prompt the user to enter a first integer
+Prompt the user to enter a second integer
+Compute the sum of the two mentioned
+integers Print the value of the result 
+
+Psedo Code:
+main:
+cout<<"Please enter a first integer(int1): "<<endl;
+cin>>s0;
+cout<<"Please enter a second integer(int2): "<<endl;
+cin>>s1;
+int z=s0+s1;
+cout<<"The result of two integers sum is: "<< z <<endl;
+
+
+MIPS CODE:
+.data
+prompt 1: .asciiz "Please enter first integer(int1)"
+prompt 2: .asciiz "Please enter second integer(int2)"
+result  : .asciiz "The result of two integers sum is:  "
+
+.text
+#### prompt user for integer 1
+la $a0,prompt 1 
+li $v0,4
+syscall
+
+#### read integer 1
+li $v0,5
+syscall
+
+##store int1 in $s0
+move $s0,$v0 
+
+#### prompt user for integer 2
+la $a0,prompt 2 
+li $v0,4
+syscall
+
+#### read integer 2
+li $v0,5
+syscall
+
+##store int2 in $s1
+move $s1,$v0 
+
+##add two integers
+add $s2,$s0,$s1
+
+##print the result message
+la $a0,result
+li $v0,4
+syscall
+
+###print the sum
+move $a0,$s2
+li $v0,1
+syscall
+
+##exit
+li $v0,10   ##load 10 to v0 for exit
+syscall
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
